@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WMC Medicine</title>
+<meta name="theme-color" content="#0b3d5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WMC Medicine">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="brand"><img src="icons/icon-192.png" alt=""><span>WMC Medicine</span></div>
+    <button id="profileBtn" class="ghost hidden" aria-label="Profile">Profile</button>
+  </header>
+  <main id="view"><div class="loading">Loading…</div></main>
+  <nav id="tabs" class="tabs hidden">
+    <button data-tab="today" class="active"><span class="ic">◉</span>Today</button>
+    <button data-tab="archive"><span class="ic">▤</span>Archive</button>
+    <button data-tab="board"><span class="ic">▲</span>Board</button>
+    <button data-tab="guide"><span class="ic">✚</span>Guide</button>
+    <button data-tab="news"><span class="ic">✉</span>News</button>
+    <button data-tab="admin" class="hidden" id="adminTab"><span class="ic">⚙</span>Admin</button>
+  </nav>
+</div>
+<div id="toast" class="toast hidden"></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

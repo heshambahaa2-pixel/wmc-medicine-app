@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn() && request.auth.token.email in ['hesham.bahaa2@gmail.com'];
+    }
+
+    // Questions: everyone signed in can read past/today; only admins write.
+    match /questions/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // One response per user per question, id = <questionId>_<uid>. Cannot be changed after answering.
+    match /responses/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && id == request.resource.data.qid + '_' + request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Profiles: readable for the leaderboard; each user edits only their own.
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+    }
+
+    match /announcements/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /guide/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+  }
+}
