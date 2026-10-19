@@ -269,7 +269,6 @@ async function renderToday() {
   bindPush();
   await renderQuestion($("#qwrap"), q, true);
 }
-function bindPush() { const b = $("#pushBtn"); if (b) b.onclick = () => enablePush(); }
 
 async function renderQuestion(el, q, isToday) {
   const resp = await getMyResponse(q.id);
