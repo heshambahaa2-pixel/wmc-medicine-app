@@ -78,3 +78,11 @@ a.tel{color:var(--navy-2);font-weight:600;text-decoration:none}
 .auth{max-width:420px;margin:24px auto}
 .or{text-align:center;color:var(--muted);margin:14px 0;font-size:14px}
 .err{color:var(--bad);font-size:14px;margin-top:8px}
+.setup{padding:14px 16px}
+.setup-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.setup-row:first-of-type{border-top:none;margin-top:6px}
+.setup-row .tick{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--line);font-weight:700;font-size:14px}
+.setup-row.done .tick{background:var(--ok);color:#fff}
+.setup-row.done .lbl{color:var(--muted);text-decoration:line-through}
+.setup-row .lbl{flex:1}
+.setup-row .btn{width:auto;padding:8px 14px;flex:none}

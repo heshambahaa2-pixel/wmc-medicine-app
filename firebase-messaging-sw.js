@@ -2,7 +2,7 @@
 importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js");
 
-const CACHE = "wmc-shell-v1";
+const CACHE = "wmc-shell-v2";
 const SHELL = ["./", "index.html", "styles.css", "app.js", "config.js", "manifest.json", "icons/icon-192.png"];
 
 try {

@@ -186,15 +186,46 @@ async function listenForeground() {
   if (!(await isSupported().catch(() => false))) return;
   onMessage(getMessaging(fb), p => toast(p.notification?.title || "New update"));
 }
+// Android/desktop Chrome hand us the install prompt; we show it from our own button.
+let installPrompt = null;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installPrompt = e; if (currentTab === "today" && profile) renderToday(); });
+window.addEventListener("appinstalled", () => { installPrompt = null; toast("Installed. Open it from your home screen"); if (currentTab === "today") renderToday(); });
+
+function pushState() {
+  if (!("Notification" in window)) return "unsupported";
+  if (Notification.permission === "denied") return "blocked";
+  if (Notification.permission === "granted" && profile?.pushEnabled) return "on";
+  return "off";
+}
 function pushCard() {
-  const granted = "Notification" in window && Notification.permission === "granted" && profile?.pushEnabled;
-  if (granted) return "";
-  if (isIOS() && !isStandalone()) {
-    return `<div class="notice"><b>Get the daily question as a notification:</b> tap the Share button in Safari, then <b>Add to Home Screen</b>. Open the app from your home screen and enable reminders here.</div>`;
-  }
-  return `<div class="notice" style="display:flex;gap:12px;align-items:center;justify-content:space-between">
-    <span>Get a reminder when the daily question drops.</span>
-    <button class="btn" style="width:auto;padding:8px 14px" id="pushBtn">Enable</button></div>`;
+  const installed = isStandalone();
+  const push = pushState();
+  if (installed && push === "on") return "";
+  const row = (done, label, btn) => `<div class="setup-row ${done ? "done" : ""}"><span class="tick">${done ? "✓" : "○"}</span><span class="lbl">${label}</span>${done ? "" : btn}</div>`;
+  let installBtn;
+  if (installPrompt) installBtn = `<button class="btn" id="installBtn">Install</button>`;
+  else if (isIOS()) installBtn = `<button class="btn line" id="iosHelp">How</button>`;
+  else installBtn = `<button class="btn line" id="androidHelp">How</button>`;
+  let pushBtn;
+  if (push === "blocked") pushBtn = `<button class="btn line" id="blockedHelp">Unblock</button>`;
+  else if (isIOS() && !installed) pushBtn = `<span class="small muted">after install</span>`;
+  else pushBtn = `<button class="btn" id="pushBtn">Enable</button>`;
+  return `<div class="card setup">
+    <b>Set up in 2 taps</b>
+    ${row(installed, "Add the app to your home screen", installBtn)}
+    ${row(push === "on", "Get the daily question as a notification", pushBtn)}
+    <div id="setupHelp" class="small muted hidden"></div>
+  </div>`;
+}
+function bindPush() {
+  const help = msg => { const h = $("#setupHelp"); if (h) { h.innerHTML = msg; h.classList.remove("hidden"); } };
+  const b = $("#pushBtn"); if (b) b.onclick = () => enablePush();
+  const i = $("#installBtn"); if (i) i.onclick = async () => { i.disabled = true; try { installPrompt.prompt(); await installPrompt.userChoice; } catch {} installPrompt = null; renderToday(); };
+  const ios = $("#iosHelp"); if (ios) ios.onclick = () => help("In <b>Safari</b>: tap the Share button (square with arrow) → <b>Add to Home Screen</b> → Add. Then open the app from your home screen and come back here.");
+  const an = $("#androidHelp"); if (an) an.onclick = () => help("In <b>Chrome</b>: tap the ⋮ menu (top right) → <b>Add to Home screen</b> or <b>Install app</b>. If you don't see it, this page may be open in another browser; open the link in Chrome.");
+  const bl = $("#blockedHelp"); if (bl) bl.onclick = () => help(isIOS()
+    ? "Notifications were turned off for this app. Go to iPhone <b>Settings → Notifications → WMC Medicine</b> and allow them, then reopen the app."
+    : "Notifications are blocked for this site. Tap the <b>lock icon</b> in Chrome's address bar → Permissions → Notifications → Allow, or phone <b>Settings → Apps → Chrome → Notifications</b>. Then tap Enable again.");
 }
 
 // ---------- questions ----------
