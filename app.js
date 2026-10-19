@@ -56,9 +56,13 @@ function liveStreak(p) {
 }
 const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+// Running inside the native (Capacitor) app?
+const isNative = () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const nativeMsg = () => (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseMessaging) || null;
+let nativePushState = "off"; // tracked separately: the WebView's Notification API doesn't reflect app permission
 
 // ---------- service worker ----------
-if ("serviceWorker" in navigator) {
+if ("serviceWorker" in navigator && !isNative()) {
   navigator.serviceWorker.register("firebase-messaging-sw.js", { updateViaCache: "none" }).then(r => { swReg = r; r.update().catch(() => {}); }).catch(console.error);
 }
 
@@ -82,8 +86,8 @@ function renderAuth(mode = "in", err = "") {
       <p class="muted">A daily board-style question, your streak, rotation guides and program news for WMC internal medicine residents.</p>
     </div>
     <div class="card">
-      <button class="btn gold" id="g">Continue with Google</button>
-      <div class="or">or use email</div>
+      ${isNative() ? `<p class="small muted" style="margin:0 0 6px">Sign in with your email and password. If you signed up with Google on the website, tap "Reset password" to set one for the app.</p>` : `<button class="btn gold" id="g">Continue with Google</button>
+      <div class="or">or use email</div>`}
       <label>Email</label><input id="em" type="email" autocomplete="email">
       <label>Password</label><input id="pw" type="password" autocomplete="${mode === "in" ? "current-password" : "new-password"}">
       <div style="height:14px"></div>
@@ -94,7 +98,7 @@ function renderAuth(mode = "in", err = "") {
       </p>
     </div>
   </div>`;
-  $("#g").onclick = () => signInWithPopup(auth, new GoogleAuthProvider()).catch(e => renderAuth(mode, e.message));
+  const gBtn = $("#g"); if (gBtn) gBtn.onclick = () => signInWithPopup(auth, new GoogleAuthProvider()).catch(e => renderAuth(mode, e.message));
   $("#go").onclick = async () => {
     const em = $("#em").value.trim(), pw = $("#pw").value;
     try {
@@ -149,7 +153,15 @@ function startApp() {
   go(["today", "archive", "board", "guide", "news", "admin"].includes(hash) ? hash : "today");
   listenForeground();
   // refresh token silently if permission already granted
-  if ("Notification" in window && Notification.permission === "granted") enablePush(true);
+  if (isNative()) {
+    const M = nativeMsg();
+    if (M) {
+      M.checkPermissions().then(({ receive }) => { if (receive === "granted") { nativePushState = "on"; enablePushNative(true); } else if (receive === "denied") nativePushState = "blocked"; }).catch(() => {});
+      M.addListener && M.addListener("tokenReceived", ({ token }) => { if (token && me) setDoc(doc(db, "users", me.uid), { fcmTokens: arrayUnion(token), pushEnabled: true }, { merge: true }); });
+      M.addListener && M.addListener("notificationReceived", ({ notification }) => toast(notification?.title || "New update"));
+      M.addListener && M.addListener("notificationActionPerformed", ({ notification }) => { const u = notification?.data?.url || ""; const h = (u.split("#")[1] || "today"); go(h); });
+    }
+  } else if ("Notification" in window && Notification.permission === "granted") enablePush(true);
 }
 function setActive(tab) {
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
@@ -162,7 +174,24 @@ function go(tab) {
 }
 
 // ---------- push ----------
+async function enablePushNative(silent) {
+  const M = nativeMsg();
+  if (!M) { if (!silent) toast("Notifications unavailable in this build"); return false; }
+  try {
+    let { receive } = await M.checkPermissions();
+    if (receive !== "granted") ({ receive } = await M.requestPermissions());
+    if (receive !== "granted") { nativePushState = "blocked"; if (!silent) toast("Allow notifications in phone Settings → Apps → WMC Medicine"); return false; }
+    const { token } = await M.getToken();
+    if (!token) throw new Error("no token");
+    await setDoc(doc(db, "users", me.uid), { fcmTokens: arrayUnion(token), pushEnabled: true, nativePush: true }, { merge: true });
+    profile.pushEnabled = true; nativePushState = "on";
+    try { localStorage.setItem("wmcNativeToken", token); } catch {}
+    if (!silent) { toast("Daily reminders on"); if (currentTab === "today") renderToday(); }
+    return true;
+  } catch (e) { console.error(e); if (!silent) toast("Couldn't enable notifications"); return false; }
+}
 async function enablePush(silent = false) {
+  if (isNative()) return enablePushNative(silent);
   try {
     if (!(await isSupported())) {
       if (!silent) toast(isIOS() && !isStandalone() ? "Add to Home Screen first, then enable" : "Notifications aren't supported in this browser");
@@ -191,15 +220,20 @@ window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); instal
 window.addEventListener("appinstalled", () => { installPrompt = null; toast("Installed. Open it from your home screen"); if (currentTab === "today") renderToday(); });
 
 function pushState() {
+  if (isNative()) return nativePushState === "on" && profile?.pushEnabled ? "on" : nativePushState;
   if (!("Notification" in window)) return "unsupported";
   if (Notification.permission === "denied") return "blocked";
   if (Notification.permission === "granted" && profile?.pushEnabled) return "on";
   return "off";
 }
 function pushCard() {
-  const installed = isStandalone();
+  const installed = isStandalone() || isNative();
   const push = pushState();
   if (installed && push === "on") return "";
+  if (isNative()) {
+    if (push === "blocked") return `<div class="notice" style="display:flex;gap:12px;align-items:center;justify-content:space-between"><span>Notifications are off for this app. Turn them on in phone Settings → Apps → WMC Medicine → Notifications.</span></div>`;
+    return `<div class="notice" style="display:flex;gap:12px;align-items:center;justify-content:space-between"><span>Get the daily question as a notification.</span><button class="btn" style="width:auto;padding:8px 14px" id="pushBtn">Enable</button></div>`;
+  }
   const row = (done, label, btn) => `<div class="setup-row ${done ? "done" : ""}"><span class="tick">${done ? "✓" : "○"}</span><span class="lbl">${label}</span>${done ? "" : btn}</div>`;
   let installBtn;
   if (installPrompt) installBtn = `<button class="btn" id="installBtn">Install</button>`;
