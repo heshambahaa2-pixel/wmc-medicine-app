@@ -1,0 +1,19 @@
+{
+  "project_info": {
+    "project_number": "571702223822",
+    "project_id": "wmc-medicine-residents",
+    "storage_bucket": "wmc-medicine-residents.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:571702223822:android:c65eb28b67373e4f71019f",
+        "android_client_info": { "package_name": "com.wmcmedicine.app" }
+      },
+      "oauth_client": [],
+      "api_key": [ { "current_key": "AIzaSyBHtBSYDtcqRuf77yAPyFHpUYE2hH3jNJo" } ],
+      "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+    }
+  ],
+  "configuration_version": "1"
+}
