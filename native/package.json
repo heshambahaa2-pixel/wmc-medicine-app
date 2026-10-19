@@ -1,0 +1,13 @@
+{
+  "name": "wmc-medicine-native",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Native wrapper (Capacitor) for the WMC Medicine residents app",
+  "dependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/cli": "^6.2.1",
+    "@capacitor/core": "^6.2.1",
+    "@capacitor-firebase/messaging": "^6.3.1",
+    "firebase": "^10.14.1"
+  }
+}

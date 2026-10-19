@@ -1,0 +1,14 @@
+{
+  "appId": "com.wmcmedicine.app",
+  "appName": "WMC Medicine",
+  "webDir": "www",
+  "server": {
+    "url": "https://heshambahaa2-pixel.github.io/wmc-medicine-app/",
+    "cleartext": false,
+    "allowNavigation": ["heshambahaa2-pixel.github.io", "*.firebaseapp.com", "*.googleapis.com", "accounts.google.com"]
+  },
+  "android": { "allowMixedContent": false },
+  "plugins": {
+    "FirebaseMessaging": { "presentationOptions": ["badge", "sound", "alert"] }
+  }
+}
