@@ -59,8 +59,7 @@ const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
 
 // ---------- service worker ----------
 if ("serviceWorker" in navigator) {
-  const qs = new URLSearchParams({ c: JSON.stringify(firebaseConfig) });
-  navigator.serviceWorker.register(`firebase-messaging-sw.js?${qs}`).then(r => { swReg = r; }).catch(console.error);
+  navigator.serviceWorker.register("firebase-messaging-sw.js", { updateViaCache: "none" }).then(r => { swReg = r; r.update().catch(() => {}); }).catch(console.error);
 }
 
 // ---------- auth ----------
