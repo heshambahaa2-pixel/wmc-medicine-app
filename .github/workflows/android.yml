@@ -1,0 +1,82 @@
+name: Build Android app
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "native/**"
+      - ".github/workflows/android.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Generate Android project
+        working-directory: native
+        run: |
+          pip install --quiet pillow
+          npm ci --no-audit --no-fund
+          bash setup-android.sh "${{ github.run_number }}" "1.0.${{ github.run_number }}"
+
+      - name: Signing key
+        working-directory: native/android
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > app/upload.keystore
+            echo "Using keystore from secrets"
+          else
+            # No key configured yet: create a throwaway debug-style key so the APK is installable for testing.
+            keytool -genkeypair -v -keystore app/upload.keystore -alias upload -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass testing123 -keypass testing123 -dname "CN=WMC Medicine, O=WMC, C=US"
+            echo "KEYSTORE_PASSWORD=testing123" >> $GITHUB_ENV
+            echo "::warning::Built with a temporary key. Add ANDROID_KEYSTORE_B64 + ANDROID_KEYSTORE_PASSWORD secrets before uploading to Google Play."
+          fi
+
+      - name: Build APK and AAB
+        working-directory: native/android
+        env:
+          KEYSTORE_PASSWORD: ${{ env.KEYSTORE_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease bundleRelease \
+            -Pandroid.injected.signing.store.file=$PWD/app/upload.keystore \
+            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias=upload \
+            -Pandroid.injected.signing.key.password="$KEYSTORE_PASSWORD"
+          mkdir -p ../../out
+          cp app/build/outputs/apk/release/app-release.apk ../../out/WMC-Medicine.apk
+          cp app/build/outputs/bundle/release/app-release.aab ../../out/WMC-Medicine.aab
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wmc-medicine-android
+          path: out/*
+
+      - name: Publish GitHub release (latest)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: WMC Medicine Android (latest build)
+          body: "Install WMC-Medicine.apk on Android (allow 'install unknown apps' when prompted). The .aab is for Google Play."
+          files: |
+            out/WMC-Medicine.apk
+            out/WMC-Medicine.aab
+          prerelease: true
