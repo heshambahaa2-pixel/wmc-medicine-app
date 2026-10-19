@@ -33,8 +33,11 @@ async function send(title, body, link) {
     const chunk = tokens.slice(i, i + 500);
     const res = await fcm.sendEachForMulticast({
       tokens: chunk.map(t => t.token),
-      // Data-only: our service worker displays it (one deterministic path, no SDK auto-display).
+      // notification: shown natively by Android/iOS apps; data: read by the web service worker and for deep links.
+      notification: { title, body },
       data: { title: String(title), body: String(body), url: String(link) },
+      android: { priority: "high", notification: { channelId: "wmc_daily", icon: "ic_stat_notify", color: "#0B3D5C" } },
+      apns: { payload: { aps: { sound: "default", badge: 1 } } },
       webpush: { headers: { Urgency: "high", TTL: "86400" } }
     });
     res.responses.forEach((r, j) => {
