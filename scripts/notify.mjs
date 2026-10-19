@@ -33,8 +33,9 @@ async function send(title, body, link) {
     const chunk = tokens.slice(i, i + 500);
     const res = await fcm.sendEachForMulticast({
       tokens: chunk.map(t => t.token),
-      notification: { title, body },
-      webpush: { fcmOptions: { link }, notification: { icon: `${APP_URL}icons/icon-192.png` } }
+      // Data-only: our service worker displays it (one deterministic path, no SDK auto-display).
+      data: { title: String(title), body: String(body), url: String(link) },
+      webpush: { headers: { Urgency: "high", TTL: "86400" } }
     });
     res.responses.forEach((r, j) => {
       if (r.success) ok++;
